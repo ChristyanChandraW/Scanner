@@ -1,0 +1,371 @@
+<!doctype html>
+<html lang="en">
+
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="author" content="ZXing for JS">
+
+  <title>Barcode Reader</title>
+
+
+<style>
+    table {
+      border-collapse: collapse;
+      margin: 10px ;
+    }
+
+    th, td {
+      padding: 8px;
+      text-align: left;
+    }
+
+	table, th, td {
+      border: 1px solid black;
+    }
+
+
+    input[type="text"], button {
+      font-size: 16px;
+    }
+	a{
+	font-size: 16px;
+	}
+
+    #addRowForm {
+      margin: 20px 0;
+    }
+  </style>
+</head>
+
+<body>
+
+<table >
+  <tr>
+    <td colspan="2"><input type="file" id="csvFileInput" accept=".csv" ></td>
+	<td><button class="button" id="downloadCsv">Download</button> </td>
+  </tr>
+  <tr>
+    <td>Hasil:</td>
+    <td><a id="result" style="display: none;"></a> <input type="number" id="hscan" name="hscan" ></td>
+	<td><button id="checkBtn">Check</button></td>
+  </tr>
+    <tr>
+	  <td colspan="2"><a id="cusNo" >	Nomor Customer </a>//<a id="cusName" > Nama Customer</a>// <input type="number" id="remain" name="remain"  step='100'>
+	  </td>
+	  <td><button id="doneBtn">Done</button></td>
+  </tr>
+  <tr>
+	  <td></td>
+	  <td width="320px" height="220px"> <video id="video" width="300px" height="200px" ></video></td>
+	  <td></td>
+  </tr>
+  <tr>
+	  <td></td>
+	  <td><button class="button" id="startButton">Start</button> <button class="button" id="resetButton">Reset</button></td>
+	  <td></td>
+  </tr>
+  <tr>
+	  <td>
+      <div id="sourceSelectPanel" style="display:none">
+	  <a for="sourceSelect">Video source:</a>
+	  </td>
+	  <td colspan="2"><select id="sourceSelect" style="max-width:230px">
+        </select></td>
+		</div>
+  </tr>
+    <tr>
+	  <td></td>
+	  <td></td>
+	  <td><button class="button" id="toggleTable">Periksa</button></td>
+  </tr>
+</table>
+	
+	<!-- Add new row form -->
+  <div id="editRowForm" style="display: none;">
+    <h2>Edit Row</h2>
+    <div id="editFields"></div>
+    <button id="saveRow">Save Changes</button>
+  </div>
+  
+<!-- Display table -->
+<div id="tableContainer">
+  <table id="csvTable">
+    <thead></thead>
+    <tbody></tbody>
+  </table>
+  </div>
+
+  <script type="text/javascript" src="https://unpkg.com/@zxing/library@latest/umd/index.min.js"></script>
+  <script type="text/javascript">
+    window.addEventListener('load', function () {
+      let selectedDeviceId;
+      const codeReader = new ZXing.BrowserMultiFormatReader()
+      console.log('ZXing code reader initialized')
+      codeReader.listVideoInputDevices()
+        .then((videoInputDevices) => {
+          const sourceSelect = document.getElementById('sourceSelect')
+          selectedDeviceId = videoInputDevices[0].deviceId
+          if (videoInputDevices.length >= 1) {
+            videoInputDevices.forEach((element) => {
+              const sourceOption = document.createElement('option')
+              sourceOption.text = element.label
+              sourceOption.value = element.deviceId
+              sourceSelect.appendChild(sourceOption)
+            })
+
+            sourceSelect.onchange = () => {
+              selectedDeviceId = sourceSelect.value;
+            };
+
+            const sourceSelectPanel = document.getElementById('sourceSelectPanel')
+            sourceSelectPanel.style.display = 'block'
+          }
+
+          document.getElementById('startButton').addEventListener('click', () => {
+            codeReader.decodeFromVideoDevice(selectedDeviceId, 'video', (result, err) => {
+              if (result) {
+                console.log(result)
+                document.getElementById('result').textContent = result.text
+				document.getElementById('hscan').value = result.text
+              }
+              if (err && !(err instanceof ZXing.NotFoundException)) {
+                console.error(err)
+                document.getElementById('result').textContent = err
+				document.getElementById('hscan').value = err
+              }
+            })
+            console.log(`Started continous decode from camera with id ${selectedDeviceId}`)
+          })
+
+          document.getElementById('resetButton').addEventListener('click', () => {
+            codeReader.reset()
+            document.getElementById('result').textContent = '';
+			document.getElementById('hscan').value = '';
+            console.log('Reset.')
+          })
+
+        })
+        .catch((err) => {
+          console.error(err)
+        })
+    })
+  </script>
+  
+  <script>
+    let csvData = []; // Array to store CSV data
+	let editRowIndex = null; // Index of the row being edited
+	let hasStatusColumn = false; // Track if "Status" column exists
+	
+	
+    // Event listener for file input
+    document.getElementById('csvFileInput').addEventListener('change', function(event) {
+      const file = event.target.files[0];
+      if (file) {
+        const reader = new FileReader();
+        reader.onload = function(e) {
+          const text = e.target.result;
+          csvData = text.split('\n').map(row => row.split(';'));
+
+			if (!csvData[0].includes("Status")) {
+            csvData[0].push("Status");
+            csvData.slice(1).forEach(row => row.push(""));
+            hasStatusColumn = true;
+          }
+
+          // Display the table
+          displayTable();
+        };
+        reader.readAsText(file);
+      } else {
+        alert('No file selected!');
+      }
+    });
+
+  
+    function displayTable() {
+      const table = document.getElementById('csvTable');
+      const thead = table.querySelector('thead');
+      const tbody = table.querySelector('tbody');
+
+      thead.innerHTML = '';
+      tbody.innerHTML = '';
+
+      const headerRow = csvData[0];
+      const headerHTML = headerRow.map(header => `<th>${header.trim()}</th>`).join('');
+      thead.innerHTML = `<tr>${headerHTML}</tr>`;
+
+      csvData.slice(1).forEach((row, rowIndex) => {
+        const rowHTML = row.map((cell, cellIndex) => {
+          const trimmedCell = cell.trim();
+          return `<td>${trimmedCell}</td>`;
+        }).join('');
+        tbody.innerHTML += `<tr data-index="${rowIndex + 1}">${rowHTML}</tr>`;
+      });
+    }
+
+
+    document.getElementById('checkBtn').addEventListener('click', function() {
+      const searchValue = document.getElementById('hscan').value.trim();
+      if (searchValue === '') {
+        alert('Coba Scan kembali!');
+        return;
+      }
+      let found = false;
+
+      csvData.forEach((row, index) => {
+        if (!found && index > 0 && row[6].trim() === searchValue) {
+          const statusIndex = csvData[0].indexOf("Status");
+          row[statusIndex] = "Scan";
+          
+		  document.getElementById('cusNo').textContent = row[3].trim();
+		  document.getElementById('cusName').textContent = row[4].trim();
+		  document.getElementById('remain').value = row[13].trim();
+		  
+          const tableRow = document.querySelector(`tr[data-index="${index}"]`);
+          if (tableRow) {
+            const statusCell = tableRow.querySelector(`td:nth-child(${statusIndex + 1})`);
+            if (statusCell) {
+              statusCell.textContent = "Scan";
+            }
+          }
+		  found = true;
+        }
+		
+		
+		if (!found && index > 0 && row[7].trim() === searchValue) {
+          const statusIndex = csvData[0].indexOf("Status");
+          row[statusIndex] = "Scan";
+          
+		  document.getElementById('cusNo').textContent = row[3].trim();
+		  document.getElementById('cusName').textContent = row[4].trim();
+		  document.getElementById('remain').value = row[13].trim();
+		  
+          const tableRow = document.querySelector(`tr[data-index="${index}"]`);
+          if (tableRow) {
+            const statusCell = tableRow.querySelector(`td:nth-child(${statusIndex + 1})`);
+            if (statusCell) {
+              statusCell.textContent = "Scan";
+            }
+          }
+		  found = true;
+        }
+		
+      });
+	  
+	  if (!found) {
+        alert('Nomor Delivery / Nomor Billing tidak ditemukan!');
+      }
+    });
+
+
+    
+    
+
+
+
+document.getElementById('doneBtn').addEventListener('click', function() {
+const searchValue = document.getElementById('hscan').value.trim();
+const remainValue = document.getElementById('remain').value.trim();
+
+  if (searchValue === '' || isNaN(remainValue)) {
+    alert('Data yang dimasukan tidak sesuai');
+    return;
+  }
+
+  if (!csvData[0].includes("Status")) {
+    csvData[0].push("Status"); // Tambahkan header "Status" jika belum ada
+    csvData.slice(1).forEach(row => row.push("")); // Tambahkan kolom kosong
+  }
+
+  let found = false;
+
+  csvData.forEach((row, index) => {
+    if (index > 0 && row[6].trim() === searchValue) {
+      const selisih = Math.abs(remainValue - parseFloat(row[13].trim()));	
+        if (selisih <= 100 && selisih >= -100 || selisih == 0 || selisih == parseFloat(row[13].trim())) {
+          const statusIndex = csvData[0].indexOf("Status");
+          row[statusIndex] = "Done";
+          // Update tabel HTML
+          const tableRow = document.querySelector(`tr[data-index="${index}"]`);
+          if (tableRow) {
+            const statusCell = tableRow.querySelector(`td:nth-child(${statusIndex + 1})`);
+            if (statusCell) {
+              statusCell.textContent = "Done";
+            }
+          }
+          found = true;
+        }
+    }
+	
+	if (index > 0 && row[7].trim() === searchValue) {
+      const selisih = Math.abs(remainValue - parseFloat(row[13].trim()));	
+        if (selisih <= 100 && selisih >= -100 || selisih == 0 || selisih == parseFloat(row[13].trim())) {
+          const statusIndex = csvData[0].indexOf("Status");
+          row[statusIndex] = "Done";
+          // Update tabel HTML
+          const tableRow = document.querySelector(`tr[data-index="${index}"]`);
+          if (tableRow) {
+            const statusCell = tableRow.querySelector(`td:nth-child(${statusIndex + 1})`);
+            if (statusCell) {
+              statusCell.textContent = "Done";
+            }
+          }
+          found = true;
+        }
+    }
+	
+	
+  });
+
+  if (!found) {
+    alert('No matching data found or condition not met.');
+  }
+});
+
+
+
+
+
+
+
+
+
+
+
+
+    
+
+    // Event listener for downloading updated CSV
+    document.getElementById('downloadCsv').addEventListener('click', function() {
+      const csvContent = csvData.map(row => row.join(';')).join('\n');
+      const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+      const url = URL.createObjectURL(blob);
+
+      const link = document.createElement('a');
+      link.setAttribute('href', url);
+      link.setAttribute('download', 'updated.csv');
+      link.style.display = 'none';
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+    });
+
+    // Event listener for toggling table visibility
+    document.getElementById('toggleTable').addEventListener('click', function() {
+      const tableContainer = document.getElementById('tableContainer');
+      const toggleButton = document.getElementById('toggleTable');
+
+      if (tableContainer.style.display === 'none') {
+        tableContainer.style.display = 'block';
+        toggleButton.textContent = 'Periksa';
+      } else {
+        tableContainer.style.display = 'none';
+        toggleButton.textContent = 'Periksa';
+      }
+    });
+  </script>
+
+</body>
+
+</html>
