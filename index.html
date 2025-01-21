@@ -46,14 +46,8 @@
 	<td><button class="button" id="downloadCsv">Download</button> </td>
   </tr>
   <tr>
-    <td>Hasil:</td>
-    <td><a id="result" style="display: none;"></a> <input type="number" id="hscan" name="hscan" ></td>
-	<td><button id="checkBtn">Check</button></td>
-  </tr>
-    <tr>
-	  <td colspan="2"><a id="cusNo" >	Nomor Customer </a>//<a id="cusName" > Nama Customer</a>// <input type="number" id="remain" name="remain"  step='100'>
-	  </td>
-	  <td><button id="doneBtn">Done</button></td>
+    <td>Hasil Scan:</td>
+    <td colspan="2"><a id="stat" >Status</a>//<a id="cusNo" >Nomor Customer </a>//<a id="cusName" > Nama Customer</a>//<a id="result" >Nomor Delivery</a></td>
   </tr>
   <tr>
 	  <td></td>
@@ -61,12 +55,12 @@
 	  <td></td>
   </tr>
   <tr>
+	  <td><button class="button" id="startButton">Start</button></td>
 	  <td></td>
-	  <td><button class="button" id="startButton">Start</button> <button class="button" id="resetButton">Reset</button></td>
-	  <td></td>
+	  <td><button class="button" id="resetButton">Reset</button></td>
   </tr>
   <tr>
-	  <td>
+<td>
       <div id="sourceSelectPanel" style="display:none">
 	  <a for="sourceSelect">Video source:</a>
 	  </td>
@@ -74,19 +68,8 @@
         </select></td>
 		</div>
   </tr>
-    <tr>
-	  <td></td>
-	  <td></td>
-	  <td><button class="button" id="toggleTable">Periksa</button></td>
-  </tr>
 </table>
-	
-	<!-- Add new row form -->
-  <div id="editRowForm" style="display: none;">
-    <h2>Edit Row</h2>
-    <div id="editFields"></div>
-    <button id="saveRow">Save Changes</button>
-  </div>
+
   
 <!-- Display table -->
 <div id="tableContainer">
@@ -97,7 +80,7 @@
   </div>
 
   <script type="text/javascript" src="https://unpkg.com/@zxing/library@latest/umd/index.min.js"></script>
-  <script type="text/javascript">
+    <script type="text/javascript">
     window.addEventListener('load', function () {
       let selectedDeviceId;
       const codeReader = new ZXing.BrowserMultiFormatReader()
@@ -122,12 +105,100 @@
             sourceSelectPanel.style.display = 'block'
           }
 
+
+
+
+
+
+
+
+
+
+
+
+
           document.getElementById('startButton').addEventListener('click', () => {
             codeReader.decodeFromVideoDevice(selectedDeviceId, 'video', (result, err) => {
               if (result) {
                 console.log(result)
-                document.getElementById('result').textContent = result.text
-				document.getElementById('hscan').value = result.text
+				const scannedValue = result.text.trim();
+                
+				
+				
+				
+				
+				let found = false;
+
+        // Periksa data CSV untuk barcode yang cocok
+        csvData.forEach((row, index) => {
+          if (!found && index > 0 && (row[6].trim() === scannedValue || row[7].trim() === scannedValue)) {
+            const statusIndex = csvData[0].indexOf("Status");
+            row[statusIndex] = "Scan"; // Perbarui status menjadi "Scan"
+
+            // Perbarui tabel HTML
+            const tableRow = document.querySelector(`tr[data-index="${index}"]`);
+            if (tableRow) {
+              const statusCell = tableRow.querySelector(`td:nth-child(${statusIndex + 1})`);
+              if (statusCell) {
+					if (row[11].trim()===row[13].trim()){
+                statusCell.textContent = "Dokumen Sesuai";
+				document.getElementById('result').textContent = result.text
+            document.getElementById('cusNo').textContent = row[3].trim(); // Nomor Customer
+            document.getElementById('cusName').textContent = row[4].trim(); // Nama Customer
+			document.getElementById('stat').textContent = "Dokumen Sesuai";	
+			document.getElementById('result').style.color  = "green";
+			document.getElementById('cusNo').style.color = "green"; // Nomor Customer
+            document.getElementById('cusName').style.color = "green"; // Nama Customer
+			document.getElementById('stat').style.color = "green";
+			
+				}
+					else if (row[12].trim()!= '"0.00"'){
+					
+					let remain = prompt("Isi jumlah Akhir tanpa titik koma!", "");					
+					remain = parseInt(remain);
+					let selisih =  Math.abs(remain - row[13].trim());
+					
+					if (remain === row[13].trim() || selisih <= 100 ){
+						statusCell.textContent = "Dokumen Sesuai ; Totalan Sesuai";
+						document.getElementById('result').textContent = result.text
+						document.getElementById('cusNo').textContent = row[3].trim(); // Nomor Customer
+						document.getElementById('cusName').textContent = row[4].trim(); // Nama Customer
+						document.getElementById('stat').textContent = "Dokumen Sesuai dan Totalan Sesuai";	
+						document.getElementById('result').style.color  = "green";
+						document.getElementById('cusNo').style.color = "green"; // Nomor Customer
+						document.getElementById('cusName').style.color = "green"; // Nama Customer
+						document.getElementById('stat').style.color = "green";
+					} else {
+						statusCell.textContent = "Dokumen Sesuai ; Totalan Tidak Sesuai";
+						document.getElementById('result').textContent = result.text
+						document.getElementById('cusNo').textContent = row[3].trim(); // Nomor Customer
+						document.getElementById('cusName').textContent = row[4].trim(); // Nama Customer
+						document.getElementById('stat').textContent = "Dokumen Sesuai tapi Totalan tidak Sesuai";	
+						document.getElementById('result').style.color  = "#CC9900";
+						document.getElementById('cusNo').style.color = "#CC9900"; // Nomor Customer
+						document.getElementById('cusName').style.color = "#CC9900"; // Nama Customer
+						document.getElementById('stat').style.color = "#CC9900";
+					}
+					
+					}
+              }
+            }
+            found = true;
+          }
+        });
+
+        if (!found) {
+          alert('Barcode tidak ditemukan di data CSV.');
+        }
+				
+				
+				
+				
+				
+				
+				
+				
+				
               }
               if (err && !(err instanceof ZXing.NotFoundException)) {
                 console.error(err)
@@ -137,6 +208,25 @@
             })
             console.log(`Started continous decode from camera with id ${selectedDeviceId}`)
           })
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
           document.getElementById('resetButton').addEventListener('click', () => {
             codeReader.reset()
@@ -153,10 +243,6 @@
   </script>
   
   <script>
-    let csvData = []; // Array to store CSV data
-	let editRowIndex = null; // Index of the row being edited
-	let hasStatusColumn = false; // Track if "Status" column exists
-	
 	
     // Event listener for file input
     document.getElementById('csvFileInput').addEventListener('change', function(event) {
@@ -194,7 +280,7 @@
       const headerRow = csvData[0];
       const headerHTML = headerRow.map(header => `<th>${header.trim()}</th>`).join('');
       thead.innerHTML = `<tr>${headerHTML}</tr>`;
-
+	tableContainer.style.display = 'none';
       csvData.slice(1).forEach((row, rowIndex) => {
         const rowHTML = row.map((cell, cellIndex) => {
           const trimmedCell = cell.trim();
@@ -357,7 +443,7 @@ const remainValue = document.getElementById('remain').value.trim();
       const toggleButton = document.getElementById('toggleTable');
 
       if (tableContainer.style.display === 'none') {
-        tableContainer.style.display = 'block';
+        tableContainer.style.display = 'none';
         toggleButton.textContent = 'Periksa';
       } else {
         tableContainer.style.display = 'none';
