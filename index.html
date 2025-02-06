@@ -1,457 +1,294 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="en">
 
 <head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta name="author" content="ZXing for JS">
+	<meta charset="utf-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1">
+	<meta name="author" content="ZXing for JS">
+	<title>Barcode Reader</title>
+	<style>
+		table {
+			border-collapse: collapse;
+			margin: 10px ;
+		}
+		th, td {
+			padding: 8px;
+			text-align: left;
+		}
+		input[type="text"], button {
+			font-size: 16px;
+		}
+		a{
+			font-size: 16px;
+		}
+		#addRowForm {
+			margin: 20px 0;
+		}
+                table, th, td {
+      			border: 1px solid black;
+    		}
 
-  <title>Barcode Reader</title>
-
-
-<style>
-    table {
-      border-collapse: collapse;
-      margin: 10px ;
-    }
-
-    th, td {
-      padding: 8px;
-      text-align: left;
-    }
-
-	table, th, td {
-      border: 1px solid black;
-    }
-
-
-    input[type="text"], button {
-      font-size: 16px;
-    }
-	a{
-	font-size: 16px;
-	}
-
-    #addRowForm {
-      margin: 20px 0;
-    }
-  </style>
+                body {
+            		font-family: Arial, sans-serif;
+            		text-align: center;
+        	}
+  		.progress-container {
+            		width: 100%;
+            		background-color: #ddd;
+            		overflow: hidden;
+        	}
+        	.progress-bar {
+            		height: 15px;
+           		width: 0%;
+           		background-color: #4CAF50;
+            		text-align: center;
+            		line-height: 15px;
+            		transition: width 0.3s ease-in-out;
+       		}
+        	.info {
+            		font-size: 18px;
+        	}
+        	.info {
+            		margin: 10px 0;
+            		font-size: 18px;
+        	}
+                
+	</style>
 </head>
 
 <body>
+	<table>
+		<tr>
+			<td colspan="2"><input type="file" id="csvFileInput" accept=".csv" ><a id="test" ></a></td>
+			<td><button class="button" id="downloadCsv" style="display:none">Download</button> </td>
+		</tr>
+		<tr>
+			<td>Hasil Scan:</td>
+			<td colspan="2"><a id="stat" > Status </a>-<a id="cusNo" > Nomor Customer </a>-<a id="cusName" > Nama Customer </a>-<a id="result" > Nomor Delivery </a></td>
+		</tr>
+		<tr>
+			<td></td>
+			<td > <video id="video"  width="375px" height="250px"></video></td>
+			<td></td>
+		</tr>
+		<tr>
+			<td><button class="button" id="startButton" style="display:none">Start</button></td>
+			<td>
+                            <a id="prostart">0</a>/<a id="proend">0</a>
+                          </td>
+			<td><audio id="benar" src="benar.wav"></audio><audio id="total" src="scan.wav"></audio><audio id="gakada" src="gak.wav"></audio></td>
+		</tr>
+		<tr>
+			<td>
+				<div id="sourceSelectPanel" >
+				<a for="sourceSelect">Video source:</a>
+			</td>
+			<td colspan="2">
+				<select id="sourceSelect" style="max-width:230px" style="display:none">
+				</select>
+			</td>
+				</div>
+		</tr>
+	</table>
 
-<table >
-  <tr>
-    <td colspan="2"><input type="file" id="csvFileInput" accept=".csv" ></td>
-	<td><button class="button" id="downloadCsv">Download</button> </td>
-  </tr>
-  <tr>
-    <td>Hasil Scan:</td>
-    <td colspan="2"><a id="stat" >Status</a>//<a id="cusNo" >Nomor Customer </a>//<a id="cusName" > Nama Customer</a>//<a id="result" >Nomor Delivery</a></td>
-  </tr>
-  <tr>
-	  <td></td>
-	  <td width="320px" height="220px"> <video id="video" width="300px" height="200px" ></video></td>
-	  <td></td>
-  </tr>
-  <tr>
-	  <td><button class="button" id="startButton">Start</button></td>
-	  <td></td>
-	  <td><button class="button" id="resetButton">Reset</button></td>
-  </tr>
-  <tr>
-<td>
-      <div id="sourceSelectPanel" style="display:none">
-	  <a for="sourceSelect">Video source:</a>
-	  </td>
-	  <td colspan="2"><select id="sourceSelect" style="max-width:230px">
-        </select></td>
-		</div>
-  </tr>
-</table>
-
-  
-<!-- Display table -->
-<div id="tableContainer">
-  <table id="csvTable">
-    <thead></thead>
-    <tbody></tbody>
-  </table>
-  </div>
-
-  <script type="text/javascript" src="https://unpkg.com/@zxing/library@latest/umd/index.min.js"></script>
-    <script type="text/javascript">
-    window.addEventListener('load', function () {
-      let selectedDeviceId;
-      const codeReader = new ZXing.BrowserMultiFormatReader()
-      console.log('ZXing code reader initialized')
-      codeReader.listVideoInputDevices()
-        .then((videoInputDevices) => {
-          const sourceSelect = document.getElementById('sourceSelect')
-          selectedDeviceId = videoInputDevices[0].deviceId
-          if (videoInputDevices.length >= 1) {
-            videoInputDevices.forEach((element) => {
-              const sourceOption = document.createElement('option')
-              sourceOption.text = element.label
-              sourceOption.value = element.deviceId
-              sourceSelect.appendChild(sourceOption)
-            })
-
-            sourceSelect.onchange = () => {
-              selectedDeviceId = sourceSelect.value;
-            };
-
-            const sourceSelectPanel = document.getElementById('sourceSelectPanel')
-            sourceSelectPanel.style.display = 'block'
-          }
-
-
-
-
-
-
-
-
-
-
-
-
-
-          document.getElementById('startButton').addEventListener('click', () => {
-            codeReader.decodeFromVideoDevice(selectedDeviceId, 'video', (result, err) => {
-              if (result) {
-                console.log(result)
-				const scannedValue = result.text.trim();
-                
-				
-				
-				
-				
-				let found = false;
-
-        // Periksa data CSV untuk barcode yang cocok
-        csvData.forEach((row, index) => {
-          if (!found && index > 0 && (row[6].trim() === scannedValue || row[7].trim() === scannedValue)) {
-            const statusIndex = csvData[0].indexOf("Status");
-            row[statusIndex] = "Scan"; // Perbarui status menjadi "Scan"
-
-            // Perbarui tabel HTML
-            const tableRow = document.querySelector(`tr[data-index="${index}"]`);
-            if (tableRow) {
-              const statusCell = tableRow.querySelector(`td:nth-child(${statusIndex + 1})`);
-              if (statusCell) {
-					if (row[11].trim()===row[13].trim()){
-                statusCell.textContent = "Dokumen Sesuai";
-				document.getElementById('result').textContent = result.text
-            document.getElementById('cusNo').textContent = row[3].trim(); // Nomor Customer
-            document.getElementById('cusName').textContent = row[4].trim(); // Nama Customer
-			document.getElementById('stat').textContent = "Dokumen Sesuai";	
-			document.getElementById('result').style.color  = "green";
-			document.getElementById('cusNo').style.color = "green"; // Nomor Customer
-            document.getElementById('cusName').style.color = "green"; // Nama Customer
-			document.getElementById('stat').style.color = "green";
+	<script type="text/javascript" src="https://unpkg.com/@zxing/library@latest/umd/index.min.js"></script>
+	<script type="text/javascript">
+		window.addEventListener('load', function () {
 			
-				}
-					else if (row[12].trim()!= '"0.00"'){
-					
-					let remain = prompt("Isi jumlah Akhir tanpa titik koma!", "");					
-					remain = parseInt(remain);
-					let selisih =  Math.abs(remain - row[13].trim());
-					
-					if (remain === row[13].trim() || selisih <= 100 ){
-						statusCell.textContent = "Dokumen Sesuai ; Totalan Sesuai";
-						document.getElementById('result').textContent = result.text
-						document.getElementById('cusNo').textContent = row[3].trim(); // Nomor Customer
-						document.getElementById('cusName').textContent = row[4].trim(); // Nama Customer
-						document.getElementById('stat').textContent = "Dokumen Sesuai dan Totalan Sesuai";	
-						document.getElementById('result').style.color  = "green";
-						document.getElementById('cusNo').style.color = "green"; // Nomor Customer
-						document.getElementById('cusName').style.color = "green"; // Nama Customer
-						document.getElementById('stat').style.color = "green";
-					} else {
-						statusCell.textContent = "Dokumen Sesuai ; Totalan Tidak Sesuai";
-						document.getElementById('result').textContent = result.text
-						document.getElementById('cusNo').textContent = row[3].trim(); // Nomor Customer
-						document.getElementById('cusName').textContent = row[4].trim(); // Nama Customer
-						document.getElementById('stat').textContent = "Dokumen Sesuai tapi Totalan tidak Sesuai";	
-						document.getElementById('result').style.color  = "#CC9900";
-						document.getElementById('cusNo').style.color = "#CC9900"; // Nomor Customer
-						document.getElementById('cusName').style.color = "#CC9900"; // Nama Customer
-						document.getElementById('stat').style.color = "#CC9900";
+			let selectedDeviceId;
+        		const progressBar = document.getElementById("progressBar");
+			const codeReader = new ZXing.BrowserMultiFormatReader()
+			console.log('ZXing code reader initialized')
+			codeReader.listVideoInputDevices()
+			.then((videoInputDevices) => {
+			
+				const sourceSelect = document.getElementById('sourceSelect')
+				selectedDeviceId = videoInputDevices[0].deviceId
+				if (videoInputDevices.length >= 1) {
+					videoInputDevices.forEach((element) => {
+					const sourceOption = document.createElement('option')
+					sourceOption.text = element.label
+					sourceOption.value = element.deviceId
+					sourceSelect.appendChild(sourceOption)
+				})
+                        	sourceSelect.onchange = () => {
+                                	selectedDeviceId = sourceSelect.value;
+				};
+                        	const sourceSelectPanel = document.getElementById('sourceSelectPanel')
+                                sourceSelectPanel.style.display = 'block'
+			}
+
+        
+		document.getElementById('startButton').addEventListener('click', () => {
+			codeReader.decodeFromVideoDevice(selectedDeviceId, 'video', (result, err) => {
+				document.getElementById('startButton').style.display = 'none';
+					if (result) {
+						const scannedValue = result.text.trim();
+						document.getElementById('result').textContent = " "+scannedValue;
+						let found = false;
+						count();
+						//alert();
+						csvData.forEach((row, index) => {
+							if (!row || !row[6] || typeof row[6] !== 'string') {
+								console.error("Data tidak valid atau kurang dari 7 kolom!", row);
+								
+								return; // Keluar dari loop
+							}
+							if (!found && index > 0 && ( row[6].trim()  === scannedValue )) {
+								const statusIndex = csvData[0].indexOf("Status");
+								if ( row[11].trim() === row[13].trim() ){
+									document.getElementById('cusNo').textContent =" "+row[3].trim()+" "; 
+									document.getElementById('cusName').textContent =" "+ row[4].trim()+" "; 
+									document.getElementById('stat').textContent = " Dokumen Sesuai ";	
+									document.getElementById('result').style.color  = "green";
+									document.getElementById('cusNo').style.color = "green"; 
+									document.getElementById('cusName').style.color = "green"; 
+									document.getElementById('stat').style.color = "green"; 
+                                    row[statusIndex] = "Dokumen Sesuai";
+                                    count();
+									found = true;
+									setTimeout(function()  {			
+										var audio = document.getElementById("benar");
+										audio.play(); 
+									}, 1000);                                                                                                                             
+								}
+								else if ( row[12].trim() !== '"0.00"'){
+									let remain = prompt("Isi jumlah Akhir tanpa titik koma!", "");					
+									remain = parseInt(remain);
+									let selisih =  Math.abs(remain - row[13].trim());
+									if (remain === row[13].trim() || selisih <= 100 ){
+										document.getElementById('cusNo').textContent = " "+row[3].trim()+" "; // Nomor Customer
+										document.getElementById('cusName').textContent = " "+row[4].trim()+" "; // Nama Customer
+										document.getElementById('stat').textContent = " Dokumen Sesuai dan Totalan Sesuai ";	
+										document.getElementById('result').style.color  = "green";
+										document.getElementById('cusNo').style.color = "green"; // Nomor Customer
+										document.getElementById('cusName').style.color = "green"; // Nama Customer
+										document.getElementById('stat').style.color = "green";
+                                        row[statusIndex] = "Dokumen Sesuai& Totalan Sesuai";
+                                        count();
+										found = true;
+										setTimeout(function()  {			
+											var audio = document.getElementById("benar");
+											audio.play(); // Play the audio
+										}, 1000);						
+									} 
+									else {
+										document.getElementById('cusNo').textContent = " "+row[3].trim()+" "; // Nomor Customer
+										document.getElementById('cusName').textContent = " "+row[4].trim()+" "; // Nama Customer
+										document.getElementById('stat').textContent = " Dokumen Sesuai tapi Totalan tidak Sesuai ";	
+										document.getElementById('result').style.color  = "#CC9900";
+										document.getElementById('cusNo').style.color = "#CC9900"; // Nomor Customer
+										document.getElementById('cusName').style.color = "#CC9900"; // Nama Customer
+										document.getElementById('stat').style.color = "#CC9900";
+										row[statusIndex] = "Dokumen Sesuai & Totalan Tidak Sesuai";
+                                        count();
+										found = true;
+										setTimeout(function()  {			
+                                            var audio = document.getElementById("total");
+                                            audio.play(); // Play the audio
+										}, 1000);
+									}
+								}
+							}
+						})
+						if (!found) {
+							setTimeout(function()  {	
+										document.getElementById('cusNo').textContent = "  "; // Nomor Customer
+										document.getElementById('cusName').textContent = " "; // Nama Customer
+										document.getElementById('stat').textContent = " Dokumen tidak dikenal ";	
+										document.getElementById('result').style.color  = "red";
+										document.getElementById('cusNo').style.color = "red"; // Nomor Customer
+										document.getElementById('cusName').style.color = "red"; // Nama Customer
+										document.getElementById('stat').style.color = "red";							
+								var audio = document.getElementById("gakada");
+								audio.play(); 
+                            }, 1000);
+						}
 					}
 					
-					}
-              }
-            }
-            found = true;
-          }
-        });
-
-        if (!found) {
-          alert('Barcode tidak ditemukan di data CSV.');
-        }
-				
-				
-				
-				
-				
-				
-				
-				
-				
-              }
-              if (err && !(err instanceof ZXing.NotFoundException)) {
-                console.error(err)
-                document.getElementById('result').textContent = err
-				document.getElementById('hscan').value = err
-              }
-            })
-            console.log(`Started continous decode from camera with id ${selectedDeviceId}`)
-          })
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-          document.getElementById('resetButton').addEventListener('click', () => {
-            codeReader.reset()
-            document.getElementById('result').textContent = '';
-			document.getElementById('hscan').value = '';
-            console.log('Reset.')
-          })
-
-        })
-        .catch((err) => {
-          console.error(err)
-        })
-    })
-  </script>
-  
-  <script>
-	
-    // Event listener for file input
-    document.getElementById('csvFileInput').addEventListener('change', function(event) {
-      const file = event.target.files[0];
-      if (file) {
-        const reader = new FileReader();
-        reader.onload = function(e) {
-          const text = e.target.result;
-          csvData = text.split('\n').map(row => row.split(';'));
-
-			if (!csvData[0].includes("Status")) {
-            csvData[0].push("Status");
-            csvData.slice(1).forEach(row => row.push(""));
-            hasStatusColumn = true;
-          }
-
-          // Display the table
-          displayTable();
-        };
-        reader.readAsText(file);
-      } else {
-        alert('No file selected!');
-      }
-    });
-
-  
-    function displayTable() {
-      const table = document.getElementById('csvTable');
-      const thead = table.querySelector('thead');
-      const tbody = table.querySelector('tbody');
-
-      thead.innerHTML = '';
-      tbody.innerHTML = '';
-
-      const headerRow = csvData[0];
-      const headerHTML = headerRow.map(header => `<th>${header.trim()}</th>`).join('');
-      thead.innerHTML = `<tr>${headerHTML}</tr>`;
-	tableContainer.style.display = 'none';
-      csvData.slice(1).forEach((row, rowIndex) => {
-        const rowHTML = row.map((cell, cellIndex) => {
-          const trimmedCell = cell.trim();
-          return `<td>${trimmedCell}</td>`;
-        }).join('');
-        tbody.innerHTML += `<tr data-index="${rowIndex + 1}">${rowHTML}</tr>`;
-      });
-    }
-
-
-    document.getElementById('checkBtn').addEventListener('click', function() {
-      const searchValue = document.getElementById('hscan').value.trim();
-      if (searchValue === '') {
-        alert('Coba Scan kembali!');
-        return;
-      }
-      let found = false;
-
-      csvData.forEach((row, index) => {
-        if (!found && index > 0 && row[6].trim() === searchValue) {
-          const statusIndex = csvData[0].indexOf("Status");
-          row[statusIndex] = "Scan";
+					if (err && !(err instanceof ZXing.NotFoundException)) {
+                		console.error(err)
+						document.getElementById('test').textContent = err
+              		}
+ 				})
+				console.log(`Started continous decode from camera with id ${selectedDeviceId}`)
+			})
+		})
+		.catch((err) => {
+			console.error(err)
+		})
+	});
+ 
+	function count() {
+      	let progress = 0;
+      	csvData.forEach((row, index) => {
+		const statusIndex = csvData[0].indexOf("Status");
+       		if(row[statusIndex] !== "" &&  progress < csvData.length ){
+            	progress =progress+1;
+                document.getElementById('prostart').textContent =  progress;
+          	}
           
-		  document.getElementById('cusNo').textContent = row[3].trim();
-		  document.getElementById('cusName').textContent = row[4].trim();
-		  document.getElementById('remain').value = row[13].trim();
-		  
-          const tableRow = document.querySelector(`tr[data-index="${index}"]`);
-          if (tableRow) {
-            const statusCell = tableRow.querySelector(`td:nth-child(${statusIndex + 1})`);
-            if (statusCell) {
-              statusCell.textContent = "Scan";
-            }
-          }
-		  found = true;
-        }
-		
-		
-		if (!found && index > 0 && row[7].trim() === searchValue) {
-          const statusIndex = csvData[0].indexOf("Status");
-          row[statusIndex] = "Scan";
-          
-		  document.getElementById('cusNo').textContent = row[3].trim();
-		  document.getElementById('cusName').textContent = row[4].trim();
-		  document.getElementById('remain').value = row[13].trim();
-		  
-          const tableRow = document.querySelector(`tr[data-index="${index}"]`);
-          if (tableRow) {
-            const statusCell = tableRow.querySelector(`td:nth-child(${statusIndex + 1})`);
-            if (statusCell) {
-              statusCell.textContent = "Scan";
-            }
-          }
-		  found = true;
-        }
-		
-      });
-	  
-	  if (!found) {
-        alert('Nomor Delivery / Nomor Billing tidak ditemukan!');
-      }
-    });
-
-
-    
-    
+      	});
+	};
 
 
 
-document.getElementById('doneBtn').addEventListener('click', function() {
-const searchValue = document.getElementById('hscan').value.trim();
-const remainValue = document.getElementById('remain').value.trim();
-
-  if (searchValue === '' || isNaN(remainValue)) {
-    alert('Data yang dimasukan tidak sesuai');
-    return;
-  }
-
-  if (!csvData[0].includes("Status")) {
-    csvData[0].push("Status"); // Tambahkan header "Status" jika belum ada
-    csvData.slice(1).forEach(row => row.push("")); // Tambahkan kolom kosong
-  }
-
-  let found = false;
-
-  csvData.forEach((row, index) => {
-    if (index > 0 && row[6].trim() === searchValue) {
-      const selisih = Math.abs(remainValue - parseFloat(row[13].trim()));	
-        if (selisih <= 100 && selisih >= -100 || selisih == 0 || selisih == parseFloat(row[13].trim())) {
-          const statusIndex = csvData[0].indexOf("Status");
-          row[statusIndex] = "Done";
-          // Update tabel HTML
-          const tableRow = document.querySelector(`tr[data-index="${index}"]`);
-          if (tableRow) {
-            const statusCell = tableRow.querySelector(`td:nth-child(${statusIndex + 1})`);
-            if (statusCell) {
-              statusCell.textContent = "Done";
-            }
-          }
-          found = true;
-        }
-    }
+	document.getElementById('csvFileInput').addEventListener('change', function(event) {
+      		const file = event.target.files[0];
+			
+      		if (file) {
+        		const reader = new FileReader();
+				
+        		reader.onload = function(e) {
+          			const text = e.target.result;
+          			csvData = text.split('\n').map(row => row.split(';'));
+          			const rowCount = csvData.length - 1;
+          			document.getElementById("proend").textContent =rowCount;
+				if (!csvData[0].includes("Status")) {
+            				csvData[0].push("Status");
+            				csvData.slice(1).forEach(row => row.push(""));
+            				hasStatusColumn = true;
+          			}
+				document.getElementById('startButton').style.display = '';
+				document.getElementById('downloadCsv').style.display = '';
+				document.getElementById('sourceSelect').style.display = '';
+				document.getElementById('csvFileInput').style.display = 'none';          
+        		};
+        		reader.readAsText(file);
+      			} 
+			else {
+        			alert('No file selected!');
+      			}
+    		});
 	
-	if (index > 0 && row[7].trim() === searchValue) {
-      const selisih = Math.abs(remainValue - parseFloat(row[13].trim()));	
-        if (selisih <= 100 && selisih >= -100 || selisih == 0 || selisih == parseFloat(row[13].trim())) {
-          const statusIndex = csvData[0].indexOf("Status");
-          row[statusIndex] = "Done";
-          // Update tabel HTML
-          const tableRow = document.querySelector(`tr[data-index="${index}"]`);
-          if (tableRow) {
-            const statusCell = tableRow.querySelector(`td:nth-child(${statusIndex + 1})`);
-            if (statusCell) {
-              statusCell.textContent = "Done";
-            }
-          }
-          found = true;
-        }
-    }
+	document.getElementById('downloadCsv').addEventListener('click', function() {
+    		const csvContent = csvData.map(row => row.join(';')).join('\n');
+    		const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    		const url = URL.createObjectURL(blob);
+   	 	const link = document.createElement('a');
+    		link.setAttribute('href', url);
+    		link.setAttribute('download', 'updated.csv');
+   	 	document.body.appendChild(link);
+    		link.click();
+    		document.body.removeChild(link);
+    		URL.revokeObjectURL(url);
+	});
 	
-	
-  });
 
-  if (!found) {
-    alert('No matching data found or condition not met.');
-  }
-});
-
-
-
-
-
-
-
-
-
-
-
-
-    
-
-    // Event listener for downloading updated CSV
-    document.getElementById('downloadCsv').addEventListener('click', function() {
-      const csvContent = csvData.map(row => row.join(';')).join('\n');
-      const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-      const url = URL.createObjectURL(blob);
-
-      const link = document.createElement('a');
-      link.setAttribute('href', url);
-      link.setAttribute('download', 'updated.csv');
-      link.style.display = 'none';
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
+    	document.getElementById('toggleTable').addEventListener('click', function() {
+      		const tableContainer = document.getElementById('tableContainer');
+      		const toggleButton = document.getElementById('toggleTable');
+      		if (tableContainer.style.display === 'none') {
+        		tableContainer.style.display = 'none';
+        		toggleButton.textContent = 'Periksa';
+      		} else {
+        		tableContainer.style.display = 'none';
+        		toggleButton.textContent = 'Periksa';
+      		}
     });
-
-    // Event listener for toggling table visibility
-    document.getElementById('toggleTable').addEventListener('click', function() {
-      const tableContainer = document.getElementById('tableContainer');
-      const toggleButton = document.getElementById('toggleTable');
-
-      if (tableContainer.style.display === 'none') {
-        tableContainer.style.display = 'none';
-        toggleButton.textContent = 'Periksa';
-      } else {
-        tableContainer.style.display = 'none';
-        toggleButton.textContent = 'Periksa';
-      }
-    });
-  </script>
-
+</script>
 </body>
-
 </html>
+
+
+
