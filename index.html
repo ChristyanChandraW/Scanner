@@ -85,6 +85,11 @@
 			</td>
 				</div>
 		</tr>
+		<tr>
+			<td>Manual</td>
+			<td><input type="number" id="manual" name="manual" ></td>
+			<td><button id="manualBtn">Check</button></td>
+		</tr>
 	</table>
 	<script type="text/javascript" src="https://unpkg.com/@zxing/library@latest/umd/index.min.js"></script>
 	<script type="text/javascript">
@@ -222,6 +227,103 @@
           
       	});
 	};
+	
+	
+	document.getElementById('manualBtn').addEventListener('click', function() {
+		const searchValue = document.getElementById('manual').value.trim();
+		if (searchValue === '') {
+			setTimeout(function()  {	
+				document.getElementById('manualBtn').textContent ="";							
+				var audio = document.getElementById("gakada");
+				audio.play(); 
+			}, 1000);
+        return;
+		}
+		let found = false;
+
+		csvData.forEach((row, index) => {
+			if (!row || !row[6] || typeof row[6] !== 'string') {
+				console.error("Data tidak valid !", row);
+				return; 
+			}
+							
+			if (!found && index > 0 && row[6].trim() === searchValue) {
+				const statusIndex = csvData[0].indexOf("Status");
+				if ( row[11].trim() === row[13].trim() ){
+					document.getElementById('cusNo').textContent =" "+row[3].trim()+" "; 
+					document.getElementById('cusName').textContent =" "+ row[4].trim()+" "; 
+					document.getElementById('stat').textContent = " Manual Input ";	
+					document.getElementById('result').style.color  = "green";
+					document.getElementById('cusNo').style.color = "green"; 
+					document.getElementById('cusName').style.color = "green"; 
+					document.getElementById('stat').style.color = "green"; 
+					row[statusIndex] = "Manual & Dokumen Sesuai";
+					count();
+					found = true;
+					setTimeout(function()  {			
+						var audio = document.getElementById("benar");
+						audio.play(); 
+					}, 1000);                                                                                                                             
+				}
+				else if ( row[12].trim() !== '"0.00"'){
+					let remain = prompt("Isi jumlah Akhir tanpa titik koma!", "");					
+					remain = parseInt(remain);
+					let selisih =  Math.abs(remain - row[13].trim());
+					if (remain === row[13].trim() || selisih <= 100 ){
+						document.getElementById('cusNo').textContent = " "+row[3].trim()+" "; // Nomor Customer
+						document.getElementById('cusName').textContent = " "+row[4].trim()+" "; // Nama Customer
+						document.getElementById('stat').textContent = " Manual Input dan Totalan Sesuai ";	
+						document.getElementById('result').style.color  = "green";
+						document.getElementById('cusNo').style.color = "green"; // Nomor Customer
+						document.getElementById('cusName').style.color = "green"; // Nama Customer
+						document.getElementById('stat').style.color = "green";
+						row[statusIndex] = "Manual & Dokumen Sesuai& Totalan Sesuai";
+						count();
+						found = true;
+						setTimeout(function()  {			
+							var audio = document.getElementById("benar");
+							audio.play(); // Play the audio
+						}, 1000);						
+					}
+					else {
+						document.getElementById('cusNo').textContent = " "+row[3].trim()+" "; // Nomor Customer
+						document.getElementById('cusName').textContent = " "+row[4].trim()+" "; // Nama Customer
+						document.getElementById('stat').textContent = " Manual Input & Totalan tidak sesuai ";	
+						document.getElementById('result').style.color  = "#CC9900";
+						document.getElementById('cusNo').style.color = "#CC9900"; // Nomor Customer
+						document.getElementById('cusName').style.color = "#CC9900"; // Nama Customer
+						document.getElementById('stat').style.color = "#CC9900";
+						row[statusIndex] = "Manual & Dokumen Sesuai & Totalan Tidak Sesuai";
+						count();
+						found = true;
+						setTimeout(function()  {			
+							var audio = document.getElementById("total");
+							audio.play(); // Play the audio
+						}, 1000);
+					}
+				}					
+			}
+		})
+		if (!found) {
+			setTimeout(function()  {	
+						document.getElementById('cusNo').textContent = "  "; // Nomor Customer
+						document.getElementById('cusName').textContent = " "; // Nama Customer
+						document.getElementById('stat').textContent = " Dokumen tidak dikenal ";	
+						document.getElementById('result').style.color  = "red";
+						document.getElementById('cusNo').style.color = "red"; // Nomor Customer
+						document.getElementById('cusName').style.color = "red"; // Nama Customer
+						document.getElementById('stat').style.color = "red";							
+				var audio = document.getElementById("gakada");
+				audio.play(); 
+			}, 1000);
+		}
+		if (err && !(err instanceof ZXing.NotFoundException)) {
+			console.error(err)
+			document.getElementById('test').textContent = err
+		}			
+    });
+	  
+
 
 	document.getElementById('csvFileInput').addEventListener('change', function(event) {
     	const file = event.target.files[0];
