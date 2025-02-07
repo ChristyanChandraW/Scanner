@@ -24,34 +24,30 @@
 		#addRowForm {
 			margin: 20px 0;
 		}
-                table, th, td {
-      			border: 1px solid black;
-    		}
-
-                body {
-            		font-family: Arial, sans-serif;
-            		text-align: center;
-        	}
+		body {
+       		font-family: Arial, sans-serif;
+       		text-align: center;
+       	}
   		.progress-container {
             		width: 100%;
             		background-color: #ddd;
             		overflow: hidden;
-        	}
-        	.progress-bar {
-            		height: 15px;
-           		width: 0%;
-           		background-color: #4CAF50;
-            		text-align: center;
-            		line-height: 15px;
-            		transition: width 0.3s ease-in-out;
+       	}
+       	.progress-bar {
+       		height: 15px;
+       		width: 0%;
+      		background-color: #4CAF50;
+       		text-align: center;
+       		line-height: 15px;
+       		transition: width 0.3s ease-in-out;
        		}
-        	.info {
-            		font-size: 18px;
-        	}
-        	.info {
-            		margin: 10px 0;
-            		font-size: 18px;
-        	}
+		.info {
+				font-size: 18px;
+		}
+		.info {
+				margin: 10px 0;
+				font-size: 18px;
+		}
                 
 	</style>
 </head>
@@ -68,14 +64,14 @@
 		</tr>
 		<tr>
 			<td></td>
-			<td > <video id="video"  width="375px" height="250px"></video></td>
+			<td > <video id="video"  ></video></td>
 			<td></td>
 		</tr>
 		<tr>
 			<td><button class="button" id="startButton" style="display:none">Start</button></td>
 			<td>
-                            <a id="prostart">0</a>/<a id="proend">0</a>
-                          </td>
+                <a id="prostart">0</a>/<a id="proend">0</a>
+            </td>
 			<td><audio id="benar" src="benar.wav"></audio><audio id="total" src="scan.wav"></audio><audio id="gakada" src="gak.wav"></audio></td>
 		</tr>
 		<tr>
@@ -90,13 +86,12 @@
 				</div>
 		</tr>
 	</table>
-
 	<script type="text/javascript" src="https://unpkg.com/@zxing/library@latest/umd/index.min.js"></script>
 	<script type="text/javascript">
 		window.addEventListener('load', function () {
 			
 			let selectedDeviceId;
-        		const progressBar = document.getElementById("progressBar");
+        	const progressBar = document.getElementById("progressBar");
 			const codeReader = new ZXing.BrowserMultiFormatReader()
 			console.log('ZXing code reader initialized')
 			codeReader.listVideoInputDevices()
@@ -117,8 +112,7 @@
                         	const sourceSelectPanel = document.getElementById('sourceSelectPanel')
                                 sourceSelectPanel.style.display = 'block'
 			}
-
-        
+			
 		document.getElementById('startButton').addEventListener('click', () => {
 			codeReader.decodeFromVideoDevice(selectedDeviceId, 'video', (result, err) => {
 				document.getElementById('startButton').style.display = 'none';
@@ -131,7 +125,6 @@
 						csvData.forEach((row, index) => {
 							if (!row || !row[6] || typeof row[6] !== 'string') {
 								console.error("Data tidak valid atau kurang dari 7 kolom!", row);
-								
 								return; // Keluar dari loop
 							}
 							if (!found && index > 0 && ( row[6].trim()  === scannedValue )) {
@@ -205,7 +198,6 @@
                             }, 1000);
 						}
 					}
-					
 					if (err && !(err instanceof ZXing.NotFoundException)) {
                 		console.error(err)
 						document.getElementById('test').textContent = err
@@ -223,7 +215,7 @@
       	let progress = 0;
       	csvData.forEach((row, index) => {
 		const statusIndex = csvData[0].indexOf("Status");
-       		if(row[statusIndex] !== "" &&  progress < csvData.length ){
+       		if((row[statusIndex] === "Dokumen Sesuai" || row[statusIndex] === "Dokumen Sesuai & Totalan Tidak Sesuai" || row[statusIndex] === "Dokumen Sesuai& Totalan Sesuai" ) &&  progress < csvData.length ){
             	progress =progress+1;
                 document.getElementById('prostart').textContent =  progress;
           	}
@@ -231,60 +223,70 @@
       	});
 	};
 
-
-
 	document.getElementById('csvFileInput').addEventListener('change', function(event) {
-      		const file = event.target.files[0];
-			
-      		if (file) {
-        		const reader = new FileReader();
+    	const file = event.target.files[0];
+		if (file) {
+			const reader = new FileReader();
+			reader.onload = function(e) {
+				const text = e.target.result;
+				csvData = text.split('\n').map(row => row.trim()).map(row => row.split(';'));
+				const rowCount = csvData.length - 2;
+				document.getElementById("proend").textContent =rowCount;
 				
-        		reader.onload = function(e) {
-          			const text = e.target.result;
-          			csvData = text.split('\n').map(row => row.split(';'));
-          			const rowCount = csvData.length - 1;
-          			document.getElementById("proend").textContent =rowCount;
+				
 				if (!csvData[0].includes("Status")) {
-            				csvData[0].push("Status");
-            				csvData.slice(1).forEach(row => row.push(""));
-            				hasStatusColumn = true;
-          			}
+					csvData[0].push("Status"); 
+					csvData.slice(1).forEach(row => {
+						if (row.length === csvData[0].length - 1) {
+                        row.push(""); // Tambahkan kolom kosong untuk Status
+						}	
+					});
+					hasStatusColumn = true;
+				}
 				document.getElementById('startButton').style.display = '';
 				document.getElementById('downloadCsv').style.display = '';
 				document.getElementById('sourceSelect').style.display = '';
 				document.getElementById('csvFileInput').style.display = 'none';          
-        		};
-        		reader.readAsText(file);
-      			} 
-			else {
-        			alert('No file selected!');
-      			}
-    		});
-	
+			};
+			reader.readAsText(file);
+		} 
+		else {
+				alert('No file selected!');
+			}
+		});
+
 	document.getElementById('downloadCsv').addEventListener('click', function() {
-    		const csvContent = csvData.map(row => row.join(';')).join('\n');
-    		const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-    		const url = URL.createObjectURL(blob);
+		const csvContent = csvData.map(row => row.join(';')).join('\n');
+		const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+		const url = URL.createObjectURL(blob);
+		
+		const now = new Date();
+		const formattedDateTime = now.getFullYear() + '-' +
+            String(now.getMonth() + 1).padStart(2, '0') + '-' +
+            String(now.getDate()).padStart(2, '0') + ' ' +
+			String(now.getHours()).padStart(2, '0') + ':' +
+		    String(now.getMinutes()).padStart(2, '0') + ':' +
+			String(now.getSeconds()).padStart(2, '0');
+		let imput = prompt("Isi nama file:", "");
    	 	const link = document.createElement('a');
-    		link.setAttribute('href', url);
-    		link.setAttribute('download', 'updated.csv');
+		link.setAttribute('href', url);
+		link.setAttribute('download', imput+formattedDateTime+'.csv');
    	 	document.body.appendChild(link);
-    		link.click();
-    		document.body.removeChild(link);
-    		URL.revokeObjectURL(url);
+		link.click();
+		document.body.removeChild(link);
+		URL.revokeObjectURL(url);
 	});
 	
-
-    	document.getElementById('toggleTable').addEventListener('click', function() {
-      		const tableContainer = document.getElementById('tableContainer');
-      		const toggleButton = document.getElementById('toggleTable');
-      		if (tableContainer.style.display === 'none') {
-        		tableContainer.style.display = 'none';
-        		toggleButton.textContent = 'Periksa';
-      		} else {
-        		tableContainer.style.display = 'none';
-        		toggleButton.textContent = 'Periksa';
-      		}
+	document.getElementById('toggleTable').addEventListener('click', function() {
+		const tableContainer = document.getElementById('tableContainer');
+		const toggleButton = document.getElementById('toggleTable');
+		if (tableContainer.style.display === 'none') {
+			tableContainer.style.display = 'none';
+			toggleButton.textContent = 'Periksa';
+		} else {
+			tableContainer.style.display = 'none';
+			toggleButton.textContent = 'Periksa';
+		}
     });
 </script>
 </body>
